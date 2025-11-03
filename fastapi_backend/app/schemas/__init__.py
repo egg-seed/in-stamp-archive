@@ -55,6 +55,15 @@ from .goshuin import (  # noqa: E402,F401
     PaginatedGoshuinResponse,
 )
 
+from .images import (  # noqa: E402,F401
+    GoshuinImageMetadataUpdate,
+    GoshuinImageRead,
+    ImageReorderRequest,
+    ImageUploadResponse,
+    SpotImageMetadataUpdate,
+    SpotImageRead,
+)
+
 
 __all__ = [
     "UserRead",
@@ -71,4 +80,10 @@ __all__ = [
     "GoshuinRead",
     "GoshuinUpdate",
     "PaginatedGoshuinResponse",
+    "ImageUploadResponse",
+    "ImageReorderRequest",
+    "SpotImageMetadataUpdate",
+    "GoshuinImageMetadataUpdate",
+    "SpotImageRead",
+    "GoshuinImageRead",
 ]
