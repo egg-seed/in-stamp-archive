@@ -48,6 +48,14 @@ from .spots import (  # noqa: E402,F401
     SpotUpdate,
 )
 
+from .goshuin import (  # noqa: E402,F401
+    GoshuinCreate,
+    GoshuinRead,
+    GoshuinUpdate,
+    PaginatedGoshuinResponse,
+)
+
+
 __all__ = [
     "UserRead",
     "UserCreate",
@@ -59,4 +67,8 @@ __all__ = [
     "SpotRead",
     "SpotUpdate",
     "PaginatedSpotsResponse",
+    "GoshuinCreate",
+    "GoshuinRead",
+    "GoshuinUpdate",
+    "PaginatedGoshuinResponse",
 ]
