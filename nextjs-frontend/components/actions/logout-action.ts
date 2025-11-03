@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { authJwtLogout } from "@/app/clientService";
+import { jwtLogout, withApiClient } from "@/src/lib/api/client";
 import { redirect } from "next/navigation";
 
 export async function logout() {
@@ -12,11 +12,7 @@ export async function logout() {
     return { message: "No access token found" };
   }
 
-  const { error } = await authJwtLogout({
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const { error } = await jwtLogout(withApiClient());
 
   if (error) {
     return { message: error };

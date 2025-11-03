@@ -1,14 +1,9 @@
 import { passwordReset } from "@/components/actions/password-reset-action";
-import { resetForgotPassword } from "@/app/clientService";
+import { forgotPassword } from "@/src/lib/api/client";
 
-jest.mock("../app/openapi-client/sdk.gen", () => ({
-  resetForgotPassword: jest.fn(),
-}));
-
-jest.mock("../lib/clientConfig", () => ({
-  client: {
-    setConfig: jest.fn(),
-  },
+jest.mock("../src/lib/api/client", () => ({
+  forgotPassword: jest.fn(),
+  withApiClient: (options: unknown) => options,
 }));
 
 describe("passwordReset action", () => {
@@ -20,11 +15,11 @@ describe("passwordReset action", () => {
     const formData = new FormData();
     formData.set("email", "testuser@example.com");
     // Mock a successful password reset
-    (resetForgotPassword as jest.Mock).mockResolvedValue({});
+    (forgotPassword as jest.Mock).mockResolvedValue({});
 
     const result = await passwordReset({}, formData);
 
-    expect(resetForgotPassword).toHaveBeenCalledWith({
+    expect(forgotPassword).toHaveBeenCalledWith({
       body: { email: "testuser@example.com" },
     });
     expect(result).toEqual({
@@ -37,14 +32,14 @@ describe("passwordReset action", () => {
     formData.set("email", "testuser@example.com");
 
     // Mock a failed password reset
-    (resetForgotPassword as jest.Mock).mockResolvedValue({
+    (forgotPassword as jest.Mock).mockResolvedValue({
       error: { detail: "User not found" },
     });
 
     const result = await passwordReset({}, formData);
 
     expect(result).toEqual({ server_validation_error: "User not found" });
-    expect(resetForgotPassword).toHaveBeenCalledWith({
+    expect(forgotPassword).toHaveBeenCalledWith({
       body: { email: "testuser@example.com" },
     });
   });
@@ -52,7 +47,7 @@ describe("passwordReset action", () => {
   it("should handle unexpected errors and return server error message", async () => {
     // Mock the resetForgotPassword to throw an error
     const mockError = new Error("Network error");
-    (resetForgotPassword as jest.Mock).mockRejectedValue(mockError);
+    (forgotPassword as jest.Mock).mockRejectedValue(mockError);
 
     const formData = new FormData();
     formData.append("email", "testuser@example.com");

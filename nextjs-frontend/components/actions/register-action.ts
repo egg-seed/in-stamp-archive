@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import { registerRegister } from "@/app/clientService";
+import { terRegister, withApiClient } from "@/src/lib/api/client";
 
 import { registerSchema } from "@/lib/definitions";
 import { getErrorMessage } from "@/lib/utils";
@@ -28,7 +28,7 @@ export async function register(prevState: unknown, formData: FormData) {
     },
   };
   try {
-    const { error } = await registerRegister(input);
+    const { error } = await terRegister(withApiClient(input));
     if (error) {
       return { server_validation_error: getErrorMessage(error) };
     }

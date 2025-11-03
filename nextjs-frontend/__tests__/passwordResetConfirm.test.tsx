@@ -1,19 +1,14 @@
 import { passwordResetConfirm } from "@/components/actions/password-reset-action";
-import { resetResetPassword } from "@/app/clientService";
+import { resetPassword } from "@/src/lib/api/client";
 import { redirect } from "next/navigation";
 
 jest.mock("next/navigation", () => ({
   redirect: jest.fn(),
 }));
 
-jest.mock("../app/openapi-client/sdk.gen", () => ({
-  resetResetPassword: jest.fn(),
-}));
-
-jest.mock("../lib/clientConfig", () => ({
-  client: {
-    setConfig: jest.fn(),
-  },
+jest.mock("../src/lib/api/client", () => ({
+  resetPassword: jest.fn(),
+  withApiClient: (options: unknown) => options,
 }));
 
 describe("passwordReset action", () => {
@@ -27,11 +22,11 @@ describe("passwordReset action", () => {
     formData.set("password", "P12345678#");
     formData.set("passwordConfirm", "P12345678#");
     // Mock a successful password reset confirm
-    (resetResetPassword as jest.Mock).mockResolvedValue({});
+    (resetPassword as jest.Mock).mockResolvedValue({});
 
     await passwordResetConfirm({}, formData);
 
-    expect(resetResetPassword).toHaveBeenCalledWith({
+    expect(resetPassword).toHaveBeenCalledWith({
       body: { token: "token", password: "P12345678#" },
     });
     expect(redirect).toHaveBeenCalled();
@@ -44,14 +39,14 @@ describe("passwordReset action", () => {
     formData.set("passwordConfirm", "P12345678#");
 
     // Mock a failed password reset
-    (resetResetPassword as jest.Mock).mockResolvedValue({
+    (resetPassword as jest.Mock).mockResolvedValue({
       error: { detail: "Invalid token" },
     });
 
     const result = await passwordResetConfirm(undefined, formData);
 
     expect(result).toEqual({ server_validation_error: "Invalid token" });
-    expect(resetResetPassword).toHaveBeenCalledWith({
+    expect(resetPassword).toHaveBeenCalledWith({
       body: { token: "invalid_token", password: "P12345678#" },
     });
   });
@@ -70,13 +65,13 @@ describe("passwordReset action", () => {
         passwordConfirm: ["Passwords must match."],
       },
     });
-    expect(resetResetPassword).not.toHaveBeenCalledWith();
+    expect(resetPassword).not.toHaveBeenCalled();
   });
 
   it("should handle unexpected errors and return server error message", async () => {
-    // Mock the resetResetPassword to throw an error
+    // Mock the resetPassword to throw an error
     const mockError = new Error("Network error");
-    (resetResetPassword as jest.Mock).mockRejectedValue(mockError);
+    (resetPassword as jest.Mock).mockRejectedValue(mockError);
 
     const formData = new FormData();
     formData.append("resetToken", "token");

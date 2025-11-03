@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { usersCurrentUser } from "@/app/clientService";
+import { currentUser, withApiClient } from "@/src/lib/api/client";
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("accessToken");
@@ -9,13 +9,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const options = {
-    headers: {
-      Authorization: `Bearer ${token.value}`,
-    },
-  };
-
-  const { error } = await usersCurrentUser(options);
+  const { error } = await currentUser(
+    withApiClient({
+      headers: {
+        Authorization: `Bearer ${token.value}`,
+      },
+    }),
+  );
 
   if (error) {
     return NextResponse.redirect(new URL("/login", request.url));

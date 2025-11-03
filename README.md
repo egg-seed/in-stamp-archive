@@ -57,6 +57,26 @@ This is a partial list of the technologies included in the template. For a compl
 
 To use this template, visit our [Get Started](https://vintasoftware.github.io/nextjs-fastapi-template/get-started/) and follow the steps.
 
+## Regenerating the OpenAPI client
+
+Keep the backend schema and the typed frontend client in sync with the following workflow:
+
+1. Export the FastAPI schema (the `OPENAPI_OUTPUT_FILE` environment variable must point to the desired JSON file, for example `local-shared-data/openapi.json`):
+
+   ```bash
+   OPENAPI_OUTPUT_FILE=local-shared-data/openapi.json \
+     python -m fastapi_backend.app.main --generate-openapi
+   ```
+
+2. Generate the TypeScript client for the Next.js app using the same schema file:
+
+   ```bash
+   cd nextjs-frontend
+   OPENAPI_OUTPUT_FILE=../local-shared-data/openapi.json pnpm generate-client
+   ```
+
+   The output lives in `nextjs-frontend/src/lib/api/generated` and is wrapped by `nextjs-frontend/src/lib/api/client.ts`, which configures fetch with cookie-based authentication.
+
 ## Using the template? Let's talk!
 
 We’re always curious to see how the community builds on top of it and where it’s being used. To collaborate:
