@@ -155,3 +155,4 @@ cython_debug/
 .idea/
 .serena/
 data/
+!nextjs-frontend/src/data/
