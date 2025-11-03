@@ -13,6 +13,7 @@ interface PagePaginationProps {
   pageSize: number;
   totalItems: number;
   basePath?: string;
+  additionalQuery?: Record<string, string | undefined>;
 }
 
 export function PagePagination({
@@ -21,12 +22,27 @@ export function PagePagination({
   pageSize,
   totalItems,
   basePath = "/dashboard",
+  additionalQuery,
 }: PagePaginationProps) {
   const hasNextPage = currentPage < totalPages;
   const hasPreviousPage = currentPage > 1;
 
-  const buildUrl = (page: number) =>
-    `${basePath}?page=${page}&size=${pageSize}`;
+  const buildUrl = (page: number) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(pageSize),
+    });
+
+    if (additionalQuery) {
+      for (const [key, value] of Object.entries(additionalQuery)) {
+        if (value) {
+          params.set(key, value);
+        }
+      }
+    }
+
+    return `${basePath}?${params.toString()}`;
+  };
 
   return (
     <div className="flex items-center justify-between my-4">
