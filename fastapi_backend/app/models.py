@@ -1,6 +1,6 @@
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
@@ -12,6 +12,7 @@ class Base(DeclarativeBase):
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     items = relationship("Item", back_populates="user", cascade="all, delete-orphan")
+    spots = relationship("Spot", back_populates="user", cascade="all, delete-orphan")
 
 
 class Item(Base):
@@ -24,3 +25,19 @@ class Item(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
 
     user = relationship("User", back_populates="items")
+
+
+class Spot(Base):
+    __tablename__ = "spots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    prefecture = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+
+    user = relationship("User", back_populates="spots")
