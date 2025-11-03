@@ -107,11 +107,11 @@ async def list_goshuin_images(
 )
 async def initiate_goshuin_image_upload(
     record_id: UUID,
-    file: UploadFile = File(...),
     background_tasks: BackgroundTasks,
     db: DatabaseSession,
     user: CurrentUser,
     storage: StorageDependency,
+    file: UploadFile = File(...),
 ) -> ImageUploadResponse:
     record = await _get_record_for_user(record_id, db, user)
 
@@ -196,7 +196,7 @@ async def delete_goshuin_image(
     image_id: UUID,
     db: DatabaseSession,
     user: CurrentUser,
-) -> None:
+):
     image = await _get_goshuin_image_for_user(record_id, image_id, db, user)
 
     async with db.begin():

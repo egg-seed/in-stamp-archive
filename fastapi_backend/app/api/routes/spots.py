@@ -133,7 +133,7 @@ async def delete_spot(
     spot_id: UUID,
     db: DatabaseSession,
     user: CurrentUser,
-) -> None:
+):
     """Delete a spot owned by the authenticated user."""
 
     spot = await _get_spot_for_user(spot_id, db, user)

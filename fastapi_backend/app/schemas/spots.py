@@ -18,9 +18,11 @@ class SpotBase(BaseModel):
     prefecture: str | None = Field(
         default=None, description="Japanese prefecture where the spot is located"
     )
-    category: str | None = Field(
-        default=None, description="Category label such as temple, museum, etc."
-    )
+    spot_type: str = Field(..., description="Type of spot: shrine, temple, museum, or other")
+    slug: str = Field(..., description="URL-friendly unique identifier")
+    city: str | None = Field(default=None, description="City where the spot is located")
+    website_url: str | None = Field(default=None, description="Official website URL")
+    phone_number: str | None = Field(default=None, description="Contact phone number")
     address: str | None = Field(default=None, description="Street address of the spot")
     latitude: float | None = Field(
         default=None, description="Latitude coordinate for the spot"
@@ -44,9 +46,15 @@ class SpotUpdate(BaseModel):
     prefecture: str | None = Field(
         default=None, description="Updated prefecture where the spot is located"
     )
-    category: str | None = Field(
-        default=None, description="Updated category label"
+    spot_type: str | None = Field(
+        default=None, description="Updated type of spot"
     )
+    slug: str | None = Field(
+        default=None, description="Updated URL-friendly identifier"
+    )
+    city: str | None = Field(default=None, description="Updated city")
+    website_url: str | None = Field(default=None, description="Updated website URL")
+    phone_number: str | None = Field(default=None, description="Updated phone number")
     address: str | None = Field(
         default=None, description="Updated street address of the spot"
     )

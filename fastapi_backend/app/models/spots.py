@@ -49,6 +49,7 @@ class Spot(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
     slug = Column(String(120), nullable=False)
     name = Column(String(255), nullable=False)
     spot_type = Column(Enum(SpotType, name="spot_type"), nullable=False)
