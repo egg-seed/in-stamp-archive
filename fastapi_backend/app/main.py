@@ -4,6 +4,7 @@ from .schemas import UserCreate, UserRead, UserUpdate
 from .users import auth_backend, fastapi_users, AUTH_URL_PATH
 from fastapi.middleware.cors import CORSMiddleware
 from .utils import simple_generate_unique_route_id
+from app.api.routes.export import router as export_router
 from app.api.routes.spots import router as spots_router
 from app.api.routes.spot_images import router as spot_images_router
 from app.api.routes.goshuin import router as goshuin_router
@@ -58,4 +59,5 @@ app.include_router(spots_router, prefix="/api/spots")
 app.include_router(spot_images_router, prefix="/api/spots")
 app.include_router(goshuin_router, prefix="/api")
 app.include_router(goshuin_images_router, prefix="/api/goshuin")
+app.include_router(export_router, prefix="/api")
 add_pagination(app)
