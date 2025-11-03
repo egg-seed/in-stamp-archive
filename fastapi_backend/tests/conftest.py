@@ -11,6 +11,8 @@ from app.models import User, Base
 from app.database import get_user_db, get_async_session
 from app.main import app
 from app.users import get_jwt_strategy
+from app.api.deps import get_storage_service
+from tests.mock_storage import MockStorageBackend, MockStorageService
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -33,10 +35,12 @@ async def engine():
 async def db_session(engine):
     """Create a fresh database session for each test."""
     async_session_maker = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
+        engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
     )
 
     async with async_session_maker() as session:
+        # Start a transaction but don't use async with
+        # This allows nested transactions in endpoints
         yield session
         await session.rollback()
         await session.close()
@@ -101,3 +105,20 @@ async def authenticated_user(test_client, db_session):
         "user": user,
         "user_data": {"email": user_data["email"], "password": "TestPassword123#"},
     }
+
+
+@pytest_asyncio.fixture(scope="function")
+async def mock_storage():
+    """Fixture to provide a mock storage backend for testing."""
+    backend = MockStorageBackend()
+    storage_service = MockStorageService(backend)
+    
+    # Override the storage service dependency
+    app.dependency_overrides[get_storage_service] = lambda: storage_service
+    
+    yield storage_service
+    
+    # Clean up
+    backend.clear()
+    if get_storage_service in app.dependency_overrides:
+        del app.dependency_overrides[get_storage_service]

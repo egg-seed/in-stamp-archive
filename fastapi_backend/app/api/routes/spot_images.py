@@ -138,16 +138,16 @@ async def initiate_spot_image_upload(
             detail="Unable to persist image to storage backend",
         ) from exc
 
-    async with db.begin():
-        image = SpotImage(
-            id=image_id,
-            spot_id=spot.id,
-            image_url=upload_result.original_url,
-            image_type=SpotImageType.OTHER,
-            is_primary=not has_primary,
-            display_order=display_order,
-        )
-        db.add(image)
+    image = SpotImage(
+        id=image_id,
+        spot_id=spot.id,
+        image_url=upload_result.original_url,
+        image_type=SpotImageType.OTHER,
+        is_primary=not has_primary,
+        display_order=display_order,
+    )
+    db.add(image)
+    await db.commit()
 
     return ImageUploadResponse(
         image_id=image_id,
@@ -175,19 +175,18 @@ async def update_spot_image_metadata(
     if not update_data:
         return SpotImageRead.model_validate(image)
 
-    async with db.begin():
-        if update_data.get("is_primary"):
-            await db.execute(
-                update(SpotImage)
-                .where(SpotImage.spot_id == image.spot_id, SpotImage.id != image.id)
-                .values(is_primary=False)
-            )
+    if update_data.get("is_primary"):
+        await db.execute(
+            update(SpotImage)
+            .where(SpotImage.spot_id == image.spot_id, SpotImage.id != image.id)
+            .values(is_primary=False)
+        )
 
-        for field, value in update_data.items():
-            setattr(image, field, value)
+    for field, value in update_data.items():
+        setattr(image, field, value)
 
-        db.add(image)
-
+    db.add(image)
+    await db.commit()
     await db.refresh(image)
     return SpotImageRead.model_validate(image)
 
@@ -201,23 +200,23 @@ async def delete_spot_image(
 ):
     image = await _get_spot_image_for_user(spot_id, image_id, db, user)
 
-    async with db.begin():
-        was_primary = image.is_primary
-        await db.delete(image)
-        await db.flush()
+    was_primary = image.is_primary
+    await db.delete(image)
+    await db.flush()
 
-        if was_primary:
-            next_primary_result = await db.execute(
-                select(SpotImage)
-                .where(SpotImage.spot_id == spot_id)
-                .order_by(SpotImage.display_order.asc(), SpotImage.created_at.asc())
-                .limit(1)
-            )
-            next_primary = next_primary_result.scalar_one_or_none()
-            if next_primary is not None:
-                next_primary.is_primary = True
+    if was_primary:
+        next_primary_result = await db.execute(
+            select(SpotImage)
+            .where(SpotImage.spot_id == spot_id)
+            .order_by(SpotImage.display_order.asc(), SpotImage.created_at.asc())
+            .limit(1)
+        )
+        next_primary = next_primary_result.scalar_one_or_none()
+        if next_primary is not None:
+            next_primary.is_primary = True
 
-        await _normalize_spot_display_order(db, spot_id)
+    await _normalize_spot_display_order(db, spot_id)
+    await db.commit()
 
     return None
 
@@ -253,9 +252,15 @@ async def reorder_spot_images(
 
     image_map = {image.id: image for image in images}
 
-    async with db.begin():
-        for index, image_id in enumerate(reorder.image_ids):
-            image_map[image_id].display_order = index
+    # First, set all display_orders to negative values to avoid UNIQUE constraint violations
+    for index, image_id in enumerate(reorder.image_ids):
+        image_map[image_id].display_order = -(index + 1)
+    await db.flush()
 
+    # Then, set them to the correct positive values
+    for index, image_id in enumerate(reorder.image_ids):
+        image_map[image_id].display_order = index
+
+    await db.commit()
     ordered = sorted(image_map.values(), key=lambda img: img.display_order)
     return [SpotImageRead.model_validate(image) for image in ordered]

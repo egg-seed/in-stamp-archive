@@ -145,15 +145,15 @@ async def initiate_goshuin_image_upload(
             detail="Unable to persist image to storage backend",
         ) from exc
 
-    async with db.begin():
-        image = GoshuinImage(
-            id=image_id,
-            goshuin_record_id=record.id,
-            image_url=upload_result.original_url,
-            image_type=GoshuinImageType.OTHER,
-            display_order=display_order,
-        )
-        db.add(image)
+    image = GoshuinImage(
+        id=image_id,
+        goshuin_record_id=record.id,
+        image_url=upload_result.original_url,
+        image_type=GoshuinImageType.OTHER,
+        display_order=display_order,
+    )
+    db.add(image)
+    await db.commit()
 
     return ImageUploadResponse(
         image_id=image_id,
@@ -181,11 +181,10 @@ async def update_goshuin_image_metadata(
     if not update_data:
         return GoshuinImageRead.model_validate(image)
 
-    async with db.begin():
-        for field, value in update_data.items():
-            setattr(image, field, value)
-        db.add(image)
-
+    for field, value in update_data.items():
+        setattr(image, field, value)
+    db.add(image)
+    await db.commit()
     await db.refresh(image)
     return GoshuinImageRead.model_validate(image)
 
@@ -199,10 +198,10 @@ async def delete_goshuin_image(
 ):
     image = await _get_goshuin_image_for_user(record_id, image_id, db, user)
 
-    async with db.begin():
-        await db.delete(image)
-        await db.flush()
-        await _normalize_record_display_order(db, record_id)
+    await db.delete(image)
+    await db.flush()
+    await _normalize_record_display_order(db, record_id)
+    await db.commit()
 
     return None
 
@@ -238,9 +237,15 @@ async def reorder_goshuin_images(
 
     image_map = {image.id: image for image in images}
 
-    async with db.begin():
-        for index, image_id in enumerate(reorder.image_ids):
-            image_map[image_id].display_order = index
+    # First, set all display_orders to negative values to avoid UNIQUE constraint violations
+    for index, image_id in enumerate(reorder.image_ids):
+        image_map[image_id].display_order = -(index + 1)
+    await db.flush()
 
+    # Then, set them to the correct positive values
+    for index, image_id in enumerate(reorder.image_ids):
+        image_map[image_id].display_order = index
+
+    await db.commit()
     ordered = sorted(image_map.values(), key=lambda img: img.display_order)
     return [GoshuinImageRead.model_validate(image) for image in ordered]
