@@ -1,73 +1,69 @@
 import asyncio
 import os
-from urllib.parse import urlparse
-
 from logging.config import fileConfig
 
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
 from app.models import Base
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
 target_metadata = Base.metadata
-# target_metadata = None
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
-# Retrieve the database URL from the environment
-# set it during execution
-database_url = os.getenv("DATABASE_URL")
+def _derive_urls(database_url: str) -> tuple[str, str]:
+    url = make_url(database_url)
 
-if not database_url:
-    raise ValueError("DATABASE_URL environment variable is not set!")
+    sync_drivername = url.drivername
+    if "+" in sync_drivername and sync_drivername.endswith("asyncpg"):
+        sync_drivername = sync_drivername.replace("+asyncpg", "")
+    elif "+" in sync_drivername and sync_drivername.endswith("aiosqlite"):
+        sync_drivername = sync_drivername.replace("+aiosqlite", "")
 
-parsed_db_url = urlparse(database_url)
+    sync_url = url.set(drivername=sync_drivername)
 
-async_db_connection_url = (
-    f"postgresql+asyncpg://{parsed_db_url.username}:{parsed_db_url.password}@"
-    f"{parsed_db_url.hostname}{':' + str(parsed_db_url.port) if parsed_db_url.port else ''}"
-    f"{parsed_db_url.path}"
-)
+    async_drivername = url.drivername
+    if not async_drivername.endswith("asyncpg") and async_drivername.startswith("postgresql"):
+        async_drivername = "postgresql+asyncpg"
+    elif not async_drivername.endswith("aiosqlite") and async_drivername.startswith("sqlite"):
+        async_drivername = "sqlite+aiosqlite"
 
-config.set_main_option("sqlalchemy.url", async_db_connection_url)
+    async_url = url.set(drivername=async_drivername)
+
+    return str(sync_url), str(async_url)
+
+
+def _get_required_database_urls() -> tuple[str, str]:
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise ValueError("DATABASE_URL environment variable is not set!")
+
+    sync_url, async_url = _derive_urls(database_url)
+    return sync_url, async_url
+
+
+SYNC_DATABASE_URL, ASYNC_DATABASE_URL = _get_required_database_urls()
+config.set_main_option("sqlalchemy.url", SYNC_DATABASE_URL)
+config.set_main_option("sqlalchemy.url_async", ASYNC_DATABASE_URL)
+ASYNC_DRIVERNAME = make_url(ASYNC_DATABASE_URL).drivername
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=SYNC_DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
+        compare_type=True,
+        compare_server_default=True,
         dialect_opts={"paramstyle": "named"},
     )
 
@@ -76,22 +72,25 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    render_as_batch = connection.dialect.name == "sqlite"
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+        compare_server_default=True,
+        render_as_batch=render_as_batch,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_async_migrations() -> None:
-    """In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        url=ASYNC_DATABASE_URL,
     )
 
     async with connectable.connect() as connection:
@@ -101,9 +100,20 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
+    if ASYNC_DRIVERNAME.startswith("sqlite+"):
+        connectable = engine_from_config(
+            config.get_section(config.config_ini_section, {}),
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+            url=SYNC_DATABASE_URL,
+        )
 
-    asyncio.run(run_async_migrations())
+        with connectable.connect() as connection:
+            do_run_migrations(connection)
+
+        connectable.dispose()
+    else:
+        asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():
