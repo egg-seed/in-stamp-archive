@@ -97,11 +97,11 @@ async def list_spot_images(
 )
 async def initiate_spot_image_upload(
     spot_id: UUID,
-    file: UploadFile = File(...),
     background_tasks: BackgroundTasks,
     db: DatabaseSession,
     user: CurrentUser,
     storage: StorageDependency,
+    file: UploadFile = File(...),
 ) -> ImageUploadResponse:
     spot = await _get_spot_for_user(spot_id, db, user)
 
@@ -198,7 +198,7 @@ async def delete_spot_image(
     image_id: UUID,
     db: DatabaseSession,
     user: CurrentUser,
-) -> None:
+):
     image = await _get_spot_image_for_user(spot_id, image_id, db, user)
 
     async with db.begin():

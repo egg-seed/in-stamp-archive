@@ -193,7 +193,7 @@ async def delete_goshuin_record(
     record_id: UUID,
     db: DatabaseSession,
     user: CurrentUser,
-) -> None:
+):
     """Delete a goshuin record owned by the authenticated user."""
 
     record = await _get_record_for_user(record_id, db, user)
