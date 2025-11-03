@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 
-import { authJwtLogin } from "@/app/clientService";
+import { jwtLogin, withApiClient } from "@/src/lib/api/client";
 import { redirect } from "next/navigation";
 import { loginSchema } from "@/lib/definitions";
 import { getErrorMessage } from "@/lib/utils";
@@ -29,7 +29,7 @@ export async function login(prevState: unknown, formData: FormData) {
   };
 
   try {
-    const { data, error } = await authJwtLogin(input);
+    const { data, error } = await jwtLogin(withApiClient(input));
     if (error) {
       return { server_validation_error: getErrorMessage(error) };
     }

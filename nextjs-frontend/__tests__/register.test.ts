@@ -1,13 +1,14 @@
 import { register } from "@/components/actions/register-action";
 import { redirect } from "next/navigation";
-import { registerRegister } from "@/app/clientService";
+import { terRegister } from "@/src/lib/api/client";
 
 jest.mock("next/navigation", () => ({
   redirect: jest.fn(),
 }));
 
-jest.mock("../app/clientService", () => ({
-  registerRegister: jest.fn(),
+jest.mock("../src/lib/api/client", () => ({
+  terRegister: jest.fn(),
+  withApiClient: (options: unknown) => options,
 }));
 
 describe("register action", () => {
@@ -17,11 +18,11 @@ describe("register action", () => {
     formData.set("password", "Q12341414#");
 
     // Mock a successful register
-    (registerRegister as jest.Mock).mockResolvedValue({});
+    (terRegister as jest.Mock).mockResolvedValue({});
 
     await register({}, formData);
 
-    expect(registerRegister).toHaveBeenCalledWith({
+    expect(terRegister).toHaveBeenCalledWith({
       body: {
         email: "a@a.com",
         password: "Q12341414#",
@@ -36,7 +37,7 @@ describe("register action", () => {
     formData.set("password", "Q12341414#");
 
     // Mock a failed register
-    (registerRegister as jest.Mock).mockResolvedValue({
+    (terRegister as jest.Mock).mockResolvedValue({
       error: {
         detail: "REGISTER_USER_ALREADY_EXISTS",
       },
@@ -44,7 +45,7 @@ describe("register action", () => {
 
     const result = await register({}, formData);
 
-    expect(registerRegister).toHaveBeenCalledWith({
+    expect(terRegister).toHaveBeenCalledWith({
       body: {
         email: "a@a.com",
         password: "Q12341414#",
@@ -71,13 +72,13 @@ describe("register action", () => {
         ],
       },
     });
-    expect(registerRegister).not.toHaveBeenCalledWith();
+    expect(terRegister).not.toHaveBeenCalled();
   });
 
   it("should handle unexpected errors and return server error message", async () => {
-    // Mock the registerRegister to throw an error
+    // Mock the terRegister to throw an error
     const mockError = new Error("Network error");
-    (registerRegister as jest.Mock).mockRejectedValue(mockError);
+    (terRegister as jest.Mock).mockRejectedValue(mockError);
 
     const formData = new FormData();
     formData.append("email", "testuser@example.com");

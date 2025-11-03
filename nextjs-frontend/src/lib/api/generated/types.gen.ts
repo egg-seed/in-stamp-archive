@@ -95,105 +95,102 @@ export type ValidationError = {
   type: string;
 };
 
-export type AuthJwtLoginData = {
+export type JwtLoginData = {
   body: login;
 };
 
-export type AuthJwtLoginResponse = BearerResponse;
+export type JwtLoginResponse = BearerResponse;
 
-export type AuthJwtLoginError = ErrorModel | HTTPValidationError;
+export type JwtLoginError = ErrorModel | HTTPValidationError;
 
-export type AuthJwtLogoutResponse = unknown;
+export type JwtLogoutResponse = unknown;
 
-export type AuthJwtLogoutError = unknown;
+export type JwtLogoutError = unknown;
 
-export type RegisterRegisterData = {
+export type TerRegisterData = {
   body: UserCreate;
 };
 
-export type RegisterRegisterResponse = UserRead;
+export type TerRegisterResponse = UserRead;
 
-export type RegisterRegisterError = ErrorModel | HTTPValidationError;
+export type TerRegisterError = ErrorModel | HTTPValidationError;
 
-export type ResetForgotPasswordData = {
+export type ForgotPasswordData = {
   body: Body_auth_reset_forgot_password;
 };
 
-export type ResetForgotPasswordResponse = unknown;
+export type ForgotPasswordResponse = unknown;
 
-export type ResetForgotPasswordError = HTTPValidationError;
+export type ForgotPasswordError = HTTPValidationError;
 
-export type ResetResetPasswordData = {
+export type ResetPasswordData = {
   body: Body_auth_reset_reset_password;
 };
 
-export type ResetResetPasswordResponse = unknown;
+export type ResetPasswordResponse = unknown;
 
-export type ResetResetPasswordError = ErrorModel | HTTPValidationError;
+export type ResetPasswordError = ErrorModel | HTTPValidationError;
 
-export type VerifyRequestTokenData = {
+export type YRequestTokenData = {
   body: Body_auth_verify_request_token;
 };
 
-export type VerifyRequestTokenResponse = unknown;
+export type YRequestTokenResponse = unknown;
 
-export type VerifyRequestTokenError = HTTPValidationError;
+export type YRequestTokenError = HTTPValidationError;
 
-export type VerifyVerifyData = {
+export type YVerifyData = {
   body: Body_auth_verify_verify;
 };
 
-export type VerifyVerifyResponse = UserRead;
+export type YVerifyResponse = UserRead;
 
-export type VerifyVerifyError = ErrorModel | HTTPValidationError;
+export type YVerifyError = ErrorModel | HTTPValidationError;
 
-export type UsersCurrentUserResponse = UserRead;
+export type CurrentUserResponse = UserRead;
 
-export type UsersCurrentUserError = unknown;
+export type CurrentUserError = unknown;
 
-export type UsersPatchCurrentUserData = {
+export type PatchCurrentUserData = {
   body: UserUpdate;
 };
 
-export type UsersPatchCurrentUserResponse = UserRead;
+export type PatchCurrentUserResponse = UserRead;
 
-export type UsersPatchCurrentUserError =
-  | ErrorModel
-  | unknown
-  | HTTPValidationError;
+export type PatchCurrentUserError = ErrorModel | unknown | HTTPValidationError;
 
-export type UsersUserData = {
+export type UserData = {
   path: {
     id: string;
   };
 };
 
-export type UsersUserResponse = UserRead;
+export type UserResponse = UserRead;
 
-export type UsersUserError = unknown | HTTPValidationError;
+export type UserError = unknown | HTTPValidationError;
 
-export type UsersPatchUserData = {
+export type PatchUserData = {
   body: UserUpdate;
   path: {
     id: string;
   };
 };
 
-export type UsersPatchUserResponse = UserRead;
+export type PatchUserResponse = UserRead;
 
-export type UsersPatchUserError = ErrorModel | unknown | HTTPValidationError;
+export type PatchUserError = ErrorModel | unknown | HTTPValidationError;
 
-export type UsersDeleteUserData = {
+export type DeleteUserData = {
   path: {
     id: string;
   };
 };
 
-export type UsersDeleteUserResponse = void;
+export type DeleteUserResponse = void;
 
-export type UsersDeleteUserError = unknown | HTTPValidationError;
+export type DeleteUserError = unknown | HTTPValidationError;
 
-export type ReadItemData = {
+export type ItemData = {
   query?: {
     /**
      * Page number
@@ -206,24 +203,24 @@ export type ReadItemData = {
   };
 };
 
-export type ReadItemResponse = Page_ItemRead_;
+export type ItemResponse = Page_ItemRead_;
 
-export type ReadItemError = HTTPValidationError;
+export type ItemError = HTTPValidationError;
 
-export type CreateItemData = {
+export type EItemData = {
   body: ItemCreate;
 };
 
-export type CreateItemResponse = ItemRead;
+export type EItemResponse = ItemRead;
 
-export type CreateItemError = HTTPValidationError;
+export type EItemError = HTTPValidationError;
 
-export type DeleteItemData = {
+export type EItemDeleteData = {
   path: {
     item_id: string;
   };
 };
 
-export type DeleteItemResponse = unknown;
+export type EItemDeleteResponse = unknown;
 
-export type DeleteItemError = HTTPValidationError;
+export type EItemDeleteError = HTTPValidationError;

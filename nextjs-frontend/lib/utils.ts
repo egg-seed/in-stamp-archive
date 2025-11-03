@@ -1,4 +1,4 @@
-import { AuthJwtLoginError, RegisterRegisterError } from "@/app/clientService";
+import { JwtLoginError, TerRegisterError } from "@/src/lib/api/client";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getErrorMessage(
-  error: RegisterRegisterError | AuthJwtLoginError,
+  error: TerRegisterError | JwtLoginError,
 ): string {
   let errorMessage = "An unknown error occurred";
 

@@ -1,9 +1,10 @@
 import { login } from "@/components/actions/login-action";
-import { authJwtLogin } from "@/app/clientService";
+import { jwtLogin } from "@/src/lib/api/client";
 import { cookies } from "next/headers";
 
-jest.mock("../app/clientService", () => ({
-  authJwtLogin: jest.fn(),
+jest.mock("../src/lib/api/client", () => ({
+  jwtLogin: jest.fn(),
+  withApiClient: (options: unknown) => options,
 }));
 
 jest.mock("next/headers", () => {
@@ -24,13 +25,13 @@ describe("login action", () => {
     const mockSet = (await cookies()).set;
 
     // Mock a successful login
-    (authJwtLogin as jest.Mock).mockResolvedValue({
+    (jwtLogin as jest.Mock).mockResolvedValue({
       data: { access_token: "1245token" },
     });
 
     await login({}, formData);
 
-    expect(authJwtLogin).toHaveBeenCalledWith({
+    expect(jwtLogin).toHaveBeenCalledWith({
       body: {
         username: "a@a.com",
         password: "Q12341414#",
@@ -47,7 +48,7 @@ describe("login action", () => {
     formData.set("password", "Q12341414#");
 
     // Mock a failed login
-    (authJwtLogin as jest.Mock).mockResolvedValue({
+    (jwtLogin as jest.Mock).mockResolvedValue({
       error: {
         detail: "LOGIN_BAD_CREDENTIALS",
       },
@@ -55,7 +56,7 @@ describe("login action", () => {
 
     const result = await login(undefined, formData);
 
-    expect(authJwtLogin).toHaveBeenCalledWith({
+    expect(jwtLogin).toHaveBeenCalledWith({
       body: {
         username: "invalid@invalid.com",
         password: "Q12341414#",
@@ -76,7 +77,7 @@ describe("login action", () => {
 
     const result = await login({}, formData);
 
-    expect(authJwtLogin).not.toHaveBeenCalledWith();
+    expect(jwtLogin).not.toHaveBeenCalled();
 
     expect(result).toEqual({
       errors: {
@@ -89,9 +90,9 @@ describe("login action", () => {
   });
 
   it("should handle unexpected errors and return server error message", async () => {
-    // Mock the authJwtLogin to throw an error
+    // Mock the jwtLogin to throw an error
     const mockError = new Error("Network error");
-    (authJwtLogin as jest.Mock).mockRejectedValue(mockError);
+    (jwtLogin as jest.Mock).mockRejectedValue(mockError);
 
     const formData = new FormData();
     formData.append("username", "testuser");

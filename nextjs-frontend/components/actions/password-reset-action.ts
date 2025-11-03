@@ -1,6 +1,6 @@
 "use server";
 
-import { resetForgotPassword, resetResetPassword } from "@/app/clientService";
+import { forgotPassword, resetPassword, withApiClient } from "@/src/lib/api/client";
 import { redirect } from "next/navigation";
 import { passwordResetConfirmSchema } from "@/lib/definitions";
 import { getErrorMessage } from "@/lib/utils";
@@ -13,7 +13,7 @@ export async function passwordReset(prevState: unknown, formData: FormData) {
   };
 
   try {
-    const { error } = await resetForgotPassword(input);
+    const { error } = await forgotPassword(withApiClient(input));
     if (error) {
       return { server_validation_error: getErrorMessage(error) };
     }
@@ -50,7 +50,7 @@ export async function passwordResetConfirm(
     },
   };
   try {
-    const { error } = await resetResetPassword(input);
+    const { error } = await resetPassword(withApiClient(input));
     if (error) {
       return { server_validation_error: getErrorMessage(error) };
     }
