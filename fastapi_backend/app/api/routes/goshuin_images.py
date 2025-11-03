@@ -2,20 +2,32 @@
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, DatabaseSession
+from app.api.deps import CurrentUser, DatabaseSession, StorageDependency
 from app.models import GoshuinImage, GoshuinImageType, GoshuinRecord, Spot, User
 from app.schemas import (
     GoshuinImageMetadataUpdate,
     GoshuinImageRead,
+    ImageExifMetadata,
     ImageReorderRequest,
     ImageUploadResponse,
 )
+from app.services import ImageValidationError, StorageServiceError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["goshuin-images"])
 
@@ -95,35 +107,64 @@ async def list_goshuin_images(
 )
 async def initiate_goshuin_image_upload(
     record_id: UUID,
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks,
     db: DatabaseSession,
     user: CurrentUser,
+    storage: StorageDependency,
 ) -> ImageUploadResponse:
     record = await _get_record_for_user(record_id, db, user)
 
     image_id = uuid4()
-    upload_path = (
+    storage_key_prefix = (
         f"uploads/goshuin/{user.id}/{record.spot_id}/{record.id}/{image_id}"
     )
 
-    async with db.begin():
-        max_order_result = await db.execute(
-            select(func.max(GoshuinImage.display_order)).where(
-                GoshuinImage.goshuin_record_id == record.id
-            )
+    max_order_result = await db.execute(
+        select(func.max(GoshuinImage.display_order)).where(
+            GoshuinImage.goshuin_record_id == record.id
         )
-        max_order = max_order_result.scalar()
-        display_order = 0 if max_order is None else max_order + 1
+    )
+    max_order = max_order_result.scalar()
+    display_order = 0 if max_order is None else max_order + 1
 
+    try:
+        upload_result = await storage.upload_image(
+            file,
+            path_prefix=storage_key_prefix,
+            background_tasks=background_tasks,
+        )
+    except ImageValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except StorageServiceError as exc:
+        logger.exception("Failed to upload goshuin image", exc_info=exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to persist image to storage backend",
+        ) from exc
+
+    async with db.begin():
         image = GoshuinImage(
             id=image_id,
             goshuin_record_id=record.id,
-            image_url=upload_path,
+            image_url=upload_result.original_url,
             image_type=GoshuinImageType.OTHER,
             display_order=display_order,
         )
         db.add(image)
 
-    return ImageUploadResponse(image_id=image_id, upload_url=upload_path, form_fields={})
+    return ImageUploadResponse(
+        image_id=image_id,
+        image_url=upload_result.original_url,
+        thumbnail_url=upload_result.thumbnail_url,
+        metadata=(
+            ImageExifMetadata.model_validate(upload_result.metadata)
+            if upload_result.metadata
+            else None
+        ),
+    )
 
 
 @router.patch("/{record_id}/images/{image_id}", response_model=GoshuinImageRead)

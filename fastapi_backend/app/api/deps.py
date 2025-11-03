@@ -9,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
 from app.models import User
 from app.users import current_active_user
+from app.services import StorageService, get_storage_service
 
 
 DatabaseSession = Annotated[AsyncSession, Depends(get_async_session)]
+StorageDependency = Annotated[StorageService, Depends(get_storage_service)]
 
 
 async def get_current_user(user: User = Depends(current_active_user)) -> User:

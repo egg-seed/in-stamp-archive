@@ -2,20 +2,32 @@
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, DatabaseSession
+from app.api.deps import CurrentUser, DatabaseSession, StorageDependency
 from app.models import Spot, SpotImage, SpotImageType, User
 from app.schemas import (
+    ImageExifMetadata,
     ImageReorderRequest,
     ImageUploadResponse,
     SpotImageMetadataUpdate,
     SpotImageRead,
 )
+from app.services import ImageValidationError, StorageServiceError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["spot-images"])
 
@@ -85,39 +97,68 @@ async def list_spot_images(
 )
 async def initiate_spot_image_upload(
     spot_id: UUID,
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks,
     db: DatabaseSession,
     user: CurrentUser,
+    storage: StorageDependency,
 ) -> ImageUploadResponse:
     spot = await _get_spot_for_user(spot_id, db, user)
 
     image_id = uuid4()
-    upload_path = f"uploads/spots/{user.id}/{spot.id}/{image_id}"
+    storage_key_prefix = f"uploads/spots/{user.id}/{spot.id}/{image_id}"
+
+    max_order_result = await db.execute(
+        select(func.max(SpotImage.display_order)).where(SpotImage.spot_id == spot.id)
+    )
+    max_order = max_order_result.scalar()
+    display_order = 0 if max_order is None else max_order + 1
+
+    primary_exists_result = await db.execute(
+        select(SpotImage.id)
+        .where(SpotImage.spot_id == spot.id, SpotImage.is_primary.is_(True))
+        .limit(1)
+    )
+    has_primary = primary_exists_result.scalar_one_or_none() is not None
+
+    try:
+        upload_result = await storage.upload_image(
+            file,
+            path_prefix=storage_key_prefix,
+            background_tasks=background_tasks,
+        )
+    except ImageValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except StorageServiceError as exc:
+        logger.exception("Failed to upload spot image", exc_info=exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to persist image to storage backend",
+        ) from exc
 
     async with db.begin():
-        max_order_result = await db.execute(
-            select(func.max(SpotImage.display_order)).where(SpotImage.spot_id == spot.id)
-        )
-        max_order = max_order_result.scalar()
-        display_order = 0 if max_order is None else max_order + 1
-
-        primary_exists_result = await db.execute(
-            select(SpotImage.id)
-            .where(SpotImage.spot_id == spot.id, SpotImage.is_primary.is_(True))
-            .limit(1)
-        )
-        has_primary = primary_exists_result.scalar_one_or_none() is not None
-
         image = SpotImage(
             id=image_id,
             spot_id=spot.id,
-            image_url=upload_path,
+            image_url=upload_result.original_url,
             image_type=SpotImageType.OTHER,
             is_primary=not has_primary,
             display_order=display_order,
         )
         db.add(image)
 
-    return ImageUploadResponse(image_id=image_id, upload_url=upload_path, form_fields={})
+    return ImageUploadResponse(
+        image_id=image_id,
+        image_url=upload_result.original_url,
+        thumbnail_url=upload_result.thumbnail_url,
+        metadata=(
+            ImageExifMetadata.model_validate(upload_result.metadata)
+            if upload_result.metadata
+            else None
+        ),
+    )
 
 
 @router.patch("/{spot_id}/images/{image_id}", response_model=SpotImageRead)

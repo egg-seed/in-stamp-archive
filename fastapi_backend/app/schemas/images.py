@@ -2,20 +2,47 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.models import GoshuinImageType, SpotImageType
 
 
+class ImageGPSMetadata(BaseModel):
+    """GPS coordinates parsed from EXIF metadata."""
+
+    latitude: float | None = None
+    longitude: float | None = None
+
+    model_config: dict[str, Any] = {"from_attributes": True}
+
+
+class ImageExifMetadata(BaseModel):
+    """Relevant EXIF metadata returned after an upload."""
+
+    make: str | None = None
+    model: str | None = None
+    datetime_original: datetime | None = None
+    datetime_digitized: datetime | None = None
+    exposure_time: str | None = None
+    f_number: float | None = None
+    iso_speed: int | None = None
+    focal_length: float | None = None
+    gps: ImageGPSMetadata | None = None
+
+    model_config: dict[str, Any] = {"from_attributes": True}
+
+
 class ImageUploadResponse(BaseModel):
-    """Information returned when initiating an image upload."""
+    """Information returned after successfully uploading an image."""
 
     image_id: UUID
-    upload_url: str
-    form_fields: dict[str, str] = Field(default_factory=dict)
+    image_url: str
+    thumbnail_url: str | None = None
+    metadata: ImageExifMetadata | None = None
 
 
 class ImageReorderRequest(BaseModel):

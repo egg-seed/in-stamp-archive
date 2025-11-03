@@ -1,4 +1,4 @@
-from typing import Set
+from typing import Literal, Set
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,6 +37,21 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: Set[str]
+
+    # Storage
+    STORAGE_BACKEND: Literal["s3", "vercel_blob", "vercel", "vercel-blob"] | None = None
+    STORAGE_PUBLIC_URL: str | None = None
+
+    # S3 configuration
+    S3_BUCKET_NAME: str | None = None
+    S3_REGION_NAME: str | None = None
+    S3_ENDPOINT_URL: str | None = None
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+
+    # Vercel Blob configuration
+    VERCEL_BLOB_READ_WRITE_TOKEN: str | None = None
+    VERCEL_BLOB_ENDPOINT: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
