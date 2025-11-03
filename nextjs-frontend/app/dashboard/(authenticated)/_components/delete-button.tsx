@@ -14,10 +14,10 @@ export function DeleteButton({ itemId }: DeleteButtonProps) {
 
   return (
     <DropdownMenuItem
-      className="text-red-500 cursor-pointer"
-      onClick={handleDelete}
+      className="text-destructive focus:text-destructive"
+      onSelect={handleDelete}
     >
-      Delete
+      削除
     </DropdownMenuItem>
   );
 }
