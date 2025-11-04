@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 export type Spot = {
   id: string;
@@ -100,7 +101,13 @@ export async function fetchPrefectureSpots(
     const data = (await response.json()) as PaginatedSpotsResponse;
     return { data, error: null };
   } catch (error) {
-    console.error("Failed to fetch prefecture spots", error);
+    logger.error("Failed to fetch prefecture spots", error, {
+      prefecture,
+      page,
+      size,
+      category,
+      keyword,
+    });
     return {
       data: null,
       error: "スポット情報の取得中に予期しないエラーが発生しました。",

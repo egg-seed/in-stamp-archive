@@ -11,6 +11,7 @@ from fastapi_pagination import add_pagination
 from .api.routes.export import router as export_router
 from .api.routes.goshuin import router as goshuin_router
 from .api.routes.goshuin_images import router as goshuin_images_router
+from .api.routes.prefectures import router as prefectures_router
 from .api.routes.spot_images import router as spot_images_router
 from .api.routes.spots import router as spots_router
 from .config import settings
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(spot_images_router, prefix="/api/spots")
     app.include_router(goshuin_router, prefix="/api")
     app.include_router(goshuin_images_router, prefix="/api/goshuin")
+    app.include_router(prefectures_router, prefix="/api/prefectures")
     app.include_router(export_router, prefix="/api")
     add_pagination(app)
 
