@@ -6,6 +6,7 @@ import { jwtLogin, withApiClient } from "@/src/lib/api/client";
 import { redirect } from "next/navigation";
 import { loginSchema } from "@/lib/definitions";
 import { getErrorMessage } from "@/lib/utils";
+import { handleServerActionError } from "@/lib/errors";
 
 export async function login(prevState: unknown, formData: FormData) {
   const validatedFields = loginSchema.safeParse({
@@ -35,10 +36,7 @@ export async function login(prevState: unknown, formData: FormData) {
     }
     (await cookies()).set("accessToken", data.access_token);
   } catch (err) {
-    console.error("Login error:", err);
-    return {
-      server_error: "An unexpected error occurred. Please try again later.",
-    };
+    return handleServerActionError(err, { username });
   }
   redirect("/dashboard");
 }

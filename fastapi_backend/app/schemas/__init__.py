@@ -66,6 +66,11 @@ from .images import (  # noqa: E402,F401
     SpotImageRead,
 )
 
+from .prefectures import (  # noqa: E402,F401
+    PrefectureStats,
+    PrefectureStatsResponse,
+)
+
 
 __all__ = [
     "UserRead",
@@ -90,4 +95,6 @@ __all__ = [
     "GoshuinImageMetadataUpdate",
     "SpotImageRead",
     "GoshuinImageRead",
+    "PrefectureStats",
+    "PrefectureStatsResponse",
 ]
