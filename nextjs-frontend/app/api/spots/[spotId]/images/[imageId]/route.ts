@@ -4,8 +4,9 @@ import { authenticatedFetch } from "@/lib/auth-fetch";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { spotId: string; imageId: string } },
+  props: { params: Promise<{ spotId: string; imageId: string }> },
 ) {
+  const params = await props.params;
   const body = await request.json();
   try {
     const data = await authenticatedFetch(
@@ -24,8 +25,9 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { spotId: string; imageId: string } },
+  props: { params: Promise<{ spotId: string; imageId: string }> },
 ) {
+  const params = await props.params;
   try {
     await authenticatedFetch(`/api/spots/${params.spotId}/images/${params.imageId}`, {
       method: "DELETE",

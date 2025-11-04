@@ -4,8 +4,9 @@ import { authenticatedFetch } from "@/lib/auth-fetch";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { spotId: string } },
+  props: { params: Promise<{ spotId: string }> },
 ) {
+  const params = await props.params;
   const body = await request.json();
   try {
     const data = await authenticatedFetch(`/api/spots/${params.spotId}/images/reorder`, {

@@ -53,7 +53,8 @@ async function safeReadError(response: Response) {
     if (data?.detail) {
       if (typeof data.detail === "string") return data.detail;
       if (Array.isArray(data.detail)) {
-        return data.detail.map((item) => item.msg ?? item.detail).join(", ");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return data.detail.map((item: any) => item.msg ?? item.detail).join(", ");
       }
     }
     return JSON.stringify(data);

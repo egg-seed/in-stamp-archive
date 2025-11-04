@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 
-import { ReadItemResponse } from "@/app/openapi-client";
+import type { ItemRead, Page_ItemRead_ } from "@/src/lib/api/generated/types.gen";
 import { fetchItems } from "@/components/actions/items-action";
 import { PagePagination } from "@/components/page-pagination";
 import { PageSizeSelector } from "@/components/page-size-selector";
@@ -44,7 +44,7 @@ export default async function DashboardPage({
   const page = Number(params.page) || 1;
   const size = Number(params.size) || 10;
 
-  const items = (await fetchItems(page, size)) as ReadItemResponse;
+  const items = (await fetchItems(page, size)) as Page_ItemRead_;
   const totalPages = Math.ceil((items.total || 0) / size);
 
   return (
@@ -89,7 +89,7 @@ export default async function DashboardPage({
                   </TableCell>
                 </TableRow>
               ) : (
-                items.items.map((item) => (
+                items.items.map((item: ItemRead) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>{item.description}</TableCell>
