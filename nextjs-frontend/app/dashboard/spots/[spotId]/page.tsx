@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import SpotDetailOverview from "@/components/spots/spot-detail-overview";
 import { authenticatedFetch } from "@/lib/auth-fetch";
 import { GoshuinRecord, PaginatedResponse, Spot, SpotImage } from "@/lib/spots";
+import { logger } from "@/lib/logger";
 
 interface SpotDetailPageProps {
   params: Promise<{ spotId: string }>;
@@ -24,7 +25,7 @@ export default async function SpotDetailPage({
       `/api/goshuin?spot_id=${spotId}&page=1&size=12`,
     )) as PaginatedResponse<GoshuinRecord>;
   } catch (error) {
-    console.error("Failed to load spot detail", error);
+    logger.error("Failed to load spot detail", error, { spotId });
   }
 
   if (!spot) {

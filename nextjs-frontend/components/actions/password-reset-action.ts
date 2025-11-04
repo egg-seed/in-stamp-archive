@@ -4,6 +4,7 @@ import { forgotPassword, resetPassword, withApiClient } from "@/src/lib/api/clie
 import { redirect } from "next/navigation";
 import { passwordResetConfirmSchema } from "@/lib/definitions";
 import { getErrorMessage } from "@/lib/utils";
+import { handleServerActionError } from "@/lib/errors";
 
 export async function passwordReset(prevState: unknown, formData: FormData) {
   const input = {
@@ -19,10 +20,8 @@ export async function passwordReset(prevState: unknown, formData: FormData) {
     }
     return { message: "Password reset instructions sent to your email." };
   } catch (err) {
-    console.error("Password reset error:", err);
-    return {
-      server_error: "An unexpected error occurred. Please try again later.",
-    };
+    const email = formData.get("email") as string;
+    return handleServerActionError(err, { email });
   }
 }
 
@@ -56,9 +55,6 @@ export async function passwordResetConfirm(
     }
     redirect(`/login`);
   } catch (err) {
-    console.error("Password reset confirmation error:", err);
-    return {
-      server_error: "An unexpected error occurred. Please try again later.",
-    };
+    return handleServerActionError(err, { token });
   }
 }

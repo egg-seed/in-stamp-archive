@@ -6,6 +6,7 @@ import { terRegister, withApiClient } from "@/src/lib/api/client";
 
 import { registerSchema } from "@/lib/definitions";
 import { getErrorMessage } from "@/lib/utils";
+import { handleServerActionError } from "@/lib/errors";
 
 export async function register(prevState: unknown, formData: FormData) {
   const validatedFields = registerSchema.safeParse({
@@ -33,10 +34,7 @@ export async function register(prevState: unknown, formData: FormData) {
       return { server_validation_error: getErrorMessage(error) };
     }
   } catch (err) {
-    console.error("Registration error:", err);
-    return {
-      server_error: "An unexpected error occurred. Please try again later.",
-    };
+    return handleServerActionError(err, { email });
   }
   redirect(`/login`);
 }

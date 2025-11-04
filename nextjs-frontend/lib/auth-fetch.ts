@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { logger } from "./logger";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -58,7 +59,10 @@ async function safeReadError(response: Response) {
     }
     return JSON.stringify(data);
   } catch (error) {
-    console.error("Failed to parse error response", error);
+    logger.error("Failed to parse error response", error, {
+      url: response.url,
+      status: response.status,
+    });
     return null;
   }
 }

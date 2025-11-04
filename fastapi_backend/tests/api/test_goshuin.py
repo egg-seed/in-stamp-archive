@@ -323,3 +323,253 @@ class TestGoshuin:
         # Should only return records for spot1
         for item in data["items"]:
             assert item["spot_id"] == str(spot1.id)
+
+    @pytest.mark.asyncio
+    async def test_sort_by_visit_date_asc(
+        self, test_client: AsyncClient, authenticated_user, db_session
+    ):
+        """Test sorting goshuin records by visit date ascending."""
+        user = authenticated_user["user"]
+
+        spot = Spot(
+            name="Test Temple",
+            prefecture="Tokyo",
+            city="Shibuya",
+            address="1-1-1 Shibuya",
+            spot_type="temple",
+            slug="test-temple",
+            user_id=user.id,
+        )
+        db_session.add(spot)
+        await db_session.commit()
+        await db_session.refresh(spot)
+
+        # Create records with different dates
+        record1 = GoshuinRecord(
+            spot_id=spot.id,
+            user_id=user.id,
+            visit_date=date(2024, 3, 15),
+            acquisition_method="in_person",
+            status="collected",
+        )
+        record2 = GoshuinRecord(
+            spot_id=spot.id,
+            user_id=user.id,
+            visit_date=date(2024, 1, 10),
+            acquisition_method="in_person",
+            status="collected",
+        )
+        db_session.add(record1)
+        db_session.add(record2)
+        await db_session.commit()
+
+        response = await test_client.get(
+            "/api/goshuin?sort_order=asc",
+            headers=authenticated_user["headers"],
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        items = data["items"]
+        # First item should be earliest date
+        assert items[0]["visit_date"] == "2024-01-10"
+
+    @pytest.mark.asyncio
+    async def test_sort_by_visit_date_desc(
+        self, test_client: AsyncClient, authenticated_user, db_session
+    ):
+        """Test sorting goshuin records by visit date descending."""
+        user = authenticated_user["user"]
+
+        spot = Spot(
+            name="Test Temple",
+            prefecture="Tokyo",
+            city="Shibuya",
+            address="1-1-1 Shibuya",
+            spot_type="temple",
+            slug="test-temple",
+            user_id=user.id,
+        )
+        db_session.add(spot)
+        await db_session.commit()
+        await db_session.refresh(spot)
+
+        # Create records with different dates
+        record1 = GoshuinRecord(
+            spot_id=spot.id,
+            user_id=user.id,
+            visit_date=date(2024, 1, 10),
+            acquisition_method="in_person",
+            status="collected",
+        )
+        record2 = GoshuinRecord(
+            spot_id=spot.id,
+            user_id=user.id,
+            visit_date=date(2024, 3, 15),
+            acquisition_method="in_person",
+            status="collected",
+        )
+        db_session.add(record1)
+        db_session.add(record2)
+        await db_session.commit()
+
+        response = await test_client.get(
+            "/api/goshuin?sort_order=desc",
+            headers=authenticated_user["headers"],
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        items = data["items"]
+        # First item should be latest date
+        assert items[0]["visit_date"] == "2024-03-15"
+
+    @pytest.mark.asyncio
+    async def test_create_with_rating_and_cost(
+        self, test_client: AsyncClient, authenticated_user, db_session
+    ):
+        """Test creating goshuin record with rating and cost."""
+        user = authenticated_user["user"]
+
+        spot = Spot(
+            name="Test Temple",
+            prefecture="Tokyo",
+            city="Shibuya",
+            address="1-1-1 Shibuya",
+            spot_type="temple",
+            slug="test-temple",
+            user_id=user.id,
+        )
+        db_session.add(spot)
+        await db_session.commit()
+        await db_session.refresh(spot)
+
+        goshuin_data = {
+            "visit_date": "2024-01-15",
+            "acquisition_method": "in_person",
+            "status": "collected",
+            "rating": 5,
+            "cost": 500,
+            "notes": "Amazing temple",
+        }
+
+        response = await test_client.post(
+            f"/api/spots/{spot.id}/goshuin",
+            json=goshuin_data,
+            headers=authenticated_user["headers"],
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["rating"] == 5
+        assert data["cost"] == 500
+
+    @pytest.mark.asyncio
+    async def test_partial_update(
+        self, test_client: AsyncClient, authenticated_user, db_session
+    ):
+        """Test partial update of goshuin record."""
+        user = authenticated_user["user"]
+
+        spot = Spot(
+            name="Test Temple",
+            prefecture="Tokyo",
+            city="Shibuya",
+            address="1-1-1 Shibuya",
+            spot_type="temple",
+            slug="test-temple",
+            user_id=user.id,
+        )
+        db_session.add(spot)
+        await db_session.commit()
+        await db_session.refresh(spot)
+
+        record = GoshuinRecord(
+            spot_id=spot.id,
+            user_id=user.id,
+            visit_date=date(2024, 1, 15),
+            acquisition_method="in_person",
+            status="collected",
+            notes="Original notes",
+            rating=3,
+        )
+        db_session.add(record)
+        await db_session.commit()
+        await db_session.refresh(record)
+
+        # Update only rating
+        update_data = {"rating": 5}
+
+        response = await test_client.patch(
+            f"/api/goshuin/{record.id}",
+            json=update_data,
+            headers=authenticated_user["headers"],
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["rating"] == 5
+        # Other fields should remain unchanged
+        assert data["notes"] == "Original notes"
+        assert data["visit_date"] == "2024-01-15"
+
+    @pytest.mark.asyncio
+    async def test_access_other_user_record(
+        self, test_client: AsyncClient, authenticated_user, db_session
+    ):
+        """Test that users cannot access other users' goshuin records."""
+        # Create another user's spot and record
+        other_user_id = uuid4()
+        spot = Spot(
+            name="Other User Temple",
+            prefecture="Tokyo",
+            city="Shibuya",
+            address="1-1-1 Shibuya",
+            spot_type="temple",
+            slug="other-temple",
+            user_id=other_user_id,
+        )
+        db_session.add(spot)
+        await db_session.commit()
+        await db_session.refresh(spot)
+
+        record = GoshuinRecord(
+            spot_id=spot.id,
+            user_id=other_user_id,
+            visit_date=date(2024, 1, 15),
+            acquisition_method="in_person",
+            status="collected",
+        )
+        db_session.add(record)
+        await db_session.commit()
+        await db_session.refresh(record)
+
+        # Try to access with authenticated user
+        response = await test_client.get(
+            f"/api/goshuin/{record.id}",
+            headers=authenticated_user["headers"],
+        )
+
+        # Should be forbidden or not found
+        assert response.status_code in [403, 404]
+
+    @pytest.mark.asyncio
+    async def test_create_with_invalid_spot(
+        self, test_client: AsyncClient, authenticated_user
+    ):
+        """Test creating goshuin record with non-existent spot."""
+        fake_spot_id = uuid4()
+
+        goshuin_data = {
+            "visit_date": "2024-01-15",
+            "acquisition_method": "in_person",
+            "status": "collected",
+        }
+
+        response = await test_client.post(
+            f"/api/spots/{fake_spot_id}/goshuin",
+            json=goshuin_data,
+            headers=authenticated_user["headers"],
+        )
+
+        assert response.status_code == 404
