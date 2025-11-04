@@ -4,8 +4,9 @@ import { authenticatedFetch } from "@/lib/auth-fetch";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { spotId: string } },
+  props: { params: Promise<{ spotId: string }> },
 ) {
+  const params = await props.params;
   try {
     const data = await authenticatedFetch(`/api/spots/${params.spotId}/images`);
     return NextResponse.json(data);
@@ -17,8 +18,9 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { spotId: string } },
+  props: { params: Promise<{ spotId: string }> },
 ) {
+  const params = await props.params;
   const formData = await request.formData();
   try {
     const data = await authenticatedFetch(`/api/spots/${params.spotId}/images/uploads`, {

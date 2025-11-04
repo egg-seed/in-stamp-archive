@@ -10,7 +10,7 @@ import {
   Stamp,
 } from "lucide-react";
 
-import { usersCurrentUser } from "@/app/clientService";
+import { currentUser } from "@/src/lib/api/generated/sdk.gen";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarNav } from "./_components/sidebar-nav";
 import { DashboardBreadcrumbs } from "./_components/dashboard-breadcrumbs";
@@ -54,14 +54,14 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
 
   if (!token) {
     redirect("/login");
   }
 
-  const { data: currentUser, error } = await usersCurrentUser({
+  const { data: user, error } = await currentUser({
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -71,7 +71,7 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const email = currentUser?.email;
+  const email = user?.email;
   const userInitial = email?.charAt(0)?.toUpperCase() ?? "U";
 
   return (
