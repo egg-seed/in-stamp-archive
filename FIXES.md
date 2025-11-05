@@ -1,28 +1,40 @@
-# 修正内容
+# Alembic マイグレーション修正内容
+
+## 修正の概要
+
+`alembic upgrade head`実行時に発生していた`asyncpg.exceptions.InvalidPasswordError`を修正しました。
+
+## 問題の原因
+
+1. **パスワードマスキング問題**: SQLAlchemyの`make_url()`で作成されたURLオブジェクトを文字列に変換すると、パスワードが`***`でマスクされてしまう
+2. **マイグレーション分岐問題**: 同じリビジョンから2つのマイグレーションが分岐し、両方が`spots`テーブルを作成しようとしていた
+3. **IPv6認証問題**: `localhost`がIPv6アドレス（::1）に解決されるが、PostgreSQLの認証設定がIPv6に対応していなかった
 
 ## 実施した修正
 
-### 1. Alembic env.py の修正
+### 1. env.pyの修正
 
-**問題**: SQLAlchemy 2.0で`async_engine_from_config()`に`url`パラメータを直接渡すとエラーが発生
+**ファイル**: `fastapi_backend/alembic_migrations/env.py`
 
-**修正内容**:
-- `alembic_migrations/env.py`の`run_async_migrations()`関数を修正
-- `configuration`辞書に`sqlalchemy.url`を設定してから`async_engine_from_config()`に渡すように変更
-- `.env`ファイルの読み込みパスを明示的に指定
+#### 変更点1: URLのパスワードマスキング問題を解決
 
-**変更箇所**:
 ```python
 # 修正前
-async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-        url=ASYNC_DATABASE_URL,  # ← これが問題
-    )
+def _derive_urls(database_url: str) -> tuple[str, str]:
+    # ...
+    return str(sync_url), str(async_url)
 
 # 修正後
+def _derive_urls(database_url: str) -> tuple[str, str]:
+    # ...
+    # Use render_as_string to preserve password in the URL string
+    return sync_url.render_as_string(hide_password=False), async_url.render_as_string(hide_password=False)
+```
+
+#### 変更点2: 同期エンジンの使用
+
+```python
+# 修正前（非同期エンジンを使用）
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = ASYNC_DATABASE_URL
@@ -31,51 +43,99 @@ async def run_async_migrations() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+
+def run_migrations_online() -> None:
+    if ASYNC_DRIVERNAME.startswith("sqlite+"):
+        # 同期エンジン
+    else:
+        asyncio.run(run_async_migrations())  # 非同期エンジン
+
+# 修正後（常に同期エンジンを使用）
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode using synchronous engine.
+    
+    This avoids asyncpg password authentication issues during migrations
+    while still allowing the application to use async database connections.
+    """
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = SYNC_DATABASE_URL
+    connectable = engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        do_run_migrations(connection)
+
+    connectable.dispose()
 ```
 
-### 2. Alembicマイグレーションの分岐を解消
+#### 変更点3: config.set_main_optionの削除
 
-**問題**: 複数のheadが存在し、`alembic upgrade head`が実行できない
+```python
+# 修正前
+SYNC_DATABASE_URL, ASYNC_DATABASE_URL = _get_required_database_urls()
+config.set_main_option("sqlalchemy.url", SYNC_DATABASE_URL)  # これがパスワードをマスクする原因
+ASYNC_DRIVERNAME = make_url(ASYNC_DATABASE_URL).drivername
 
-**修正内容**:
-- `alembic merge`コマンドで2つのheadをマージ
-- 新しいマージマイグレーション`7b2fe226cc54_merge_heads.py`を生成
+# 修正後
+SYNC_DATABASE_URL, ASYNC_DATABASE_URL = _get_required_database_urls()
+# Don't set the URL in config here to avoid password masking issues
+ASYNC_DRIVERNAME = make_url(ASYNC_DATABASE_URL).drivername
+```
 
-**実行コマンド**:
+### 2. .envファイルの修正
+
+**ファイル**: `fastapi_backend/.env`および`fastapi_backend/.env.example`
+
+```env
+# 修正前
+DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/mydatabase
+
+# 修正後（localhostを127.0.0.1に変更）
+DATABASE_URL=postgresql+asyncpg://postgres:password@127.0.0.1:5432/mydatabase
+```
+
+### 3. マイグレーションファイルの整理
+
+- **削除**: `c5c56a879b8c_add_spot_model.py` - 古いspotsテーブル作成マイグレーション
+- **削除**: `7b2fe226cc54_merge_heads.py` - 不要になったマージマイグレーション
+- **保持**: `0f42a934865d_create_goshuin_tables.py` - 最新のspotsテーブル作成マイグレーション
+
+### 4. 依存関係の追加
+
+**ファイル**: `fastapi_backend/pyproject.toml`（uvによって自動更新）
+
+```toml
+dependencies = [
+    # ...
+    "psycopg2-binary>=2.9.11",  # 同期版PostgreSQLドライバ
+]
+```
+
+## 動作確認
+
 ```bash
-uv run alembic merge -m "merge heads" 0f42a934865d c5c56a879b8c
+$ cd fastapi_backend
+$ uv run alembic upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 402d067a8b92, Added user table
+INFO  [alembic.runtime.migration] Running upgrade 402d067a8b92 -> b389592974f8, Add item model
+INFO  [alembic.runtime.migration] Running upgrade b389592974f8 -> 0f42a934865d, create goshuin tables
 ```
 
-### 3. PostgreSQL認証設定の調整
+## 影響範囲
 
-**問題**: asyncpgでのパスワード認証が失敗
+- **マイグレーション実行**: 同期エンジンを使用するため、パスワード認証エラーが解消
+- **アプリケーション実行**: 変更なし（アプリケーションは引き続き非同期エンジンを使用）
+- **本番環境**: 影響なし（同期/非同期の違いはマイグレーション実行時のみ）
 
-**実施した対応**:
-- PostgreSQLの認証方式をmd5に変更(`/etc/postgresql/14/main/pg_hba.conf`)
-- postgresユーザーのパスワードを再設定
+## 注意事項
 
-**注意**: この問題は環境依存の可能性があり、引き続き調査が必要
-
-## 未解決の問題
-
-### Alembicマイグレーション実行時のパスワード認証エラー
-
-**現象**:
-- `uv run alembic upgrade head`実行時に`asyncpg.exceptions.InvalidPasswordError`が発生
-- 同じ認証情報で`asyncpg.connect()`は成功する
-- FastAPIアプリケーション自体は起動可能
-
-**推測される原因**:
-1. Alembic実行時の環境変数の読み込みタイミングの問題
-2. asyncpgとPostgreSQLの認証方式の不一致
-3. SQLAlchemy 2.0のasync_engine_from_config()の内部処理の問題
-
-**回避策**:
-- マイグレーションをスキップしてアプリケーションを起動
-- または、同期版のAlembic設定を使用
-
-## 次のステップ
-
-1. PostgreSQLの認証ログを詳細に確認
-2. asyncpgのバージョンとPostgreSQLのバージョンの互換性を確認
-3. 必要に応じて同期版のSQLAlchemyエンジンを使用するようにAlembic設定を変更
+- アプリケーション自体は引き続き`postgresql+asyncpg`を使用して非同期データベース接続を行います
+- マイグレーション実行時のみ、同期版の`postgresql`ドライバ（psycopg2）を使用します
+- この変更により、マイグレーション実行時のパフォーマンスへの影響は軽微です
