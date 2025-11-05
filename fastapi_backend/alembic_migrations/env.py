@@ -9,8 +9,11 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.models import Base
 from dotenv import load_dotenv
+import pathlib
 
-load_dotenv()
+# Load .env file from the same directory as this script
+env_path = pathlib.Path(__file__).parent.parent / '.env'
+load_dotenv(env_path)
 
 config = context.config
 
@@ -53,7 +56,6 @@ def _get_required_database_urls() -> tuple[str, str]:
 
 SYNC_DATABASE_URL, ASYNC_DATABASE_URL = _get_required_database_urls()
 config.set_main_option("sqlalchemy.url", SYNC_DATABASE_URL)
-config.set_main_option("sqlalchemy.url_async", ASYNC_DATABASE_URL)
 ASYNC_DRIVERNAME = make_url(ASYNC_DATABASE_URL).drivername
 
 
@@ -86,11 +88,12 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = ASYNC_DATABASE_URL
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        url=ASYNC_DATABASE_URL,
     )
 
     async with connectable.connect() as connection:
