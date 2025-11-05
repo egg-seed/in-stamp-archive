@@ -381,3 +381,112 @@ OPENAPI_OUTPUT_FILE=openapi.json
 
 - [Next.js 15 Server and Client Components](https://nextjs.org/docs/app/building-your-application/rendering/composition-patterns)
 - [React Server Components](https://react.dev/reference/rsc/server-components)
+
+---
+
+# ログイン時のLOGIN_BAD_CREDENTIALSエラーの修正
+
+## 修正の概要
+
+ユーザー登録は成功するが、ログイン時に`LOGIN_BAD_CREDENTIALS`エラーが発生する問題を修正しました。
+
+## 問題の原因
+
+`fastapi_backend/app/database.py`で`urllib.parse.urlparse`を使用してDATABASE_URLをパースしていましたが、`postgresql+asyncpg`のようなSQLAlchemyのドライバ指定を含むURLを正しくパースできませんでした。
+
+具体的には：
+- `urlparse("postgresql+asyncpg://user:pass@host/db")`は、スキーム部分を`postgresql+asyncpg`として認識し、正しくパースできない
+- その結果、データベース接続URLが不正な形式になり、認証に失敗していた
+- バックエンドの起動時にデータベース接続が確立できず、ログイン時に認証エラーが発生
+
+## 実施した修正
+
+### database.pyの修正
+
+**ファイル**: `fastapi_backend/app/database.py`
+
+#### 変更点: SQLAlchemyのmake_urlを使用
+
+```python
+# 修正前
+from typing import AsyncGenerator
+from urllib.parse import urlparse
+
+from fastapi import Depends
+from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from .config import settings
+from .models import Base, User
+
+
+parsed_db_url = urlparse(settings.DATABASE_URL)
+
+async_db_connection_url = (
+    f"postgresql+asyncpg://{parsed_db_url.username}:{parsed_db_url.password}@"
+    f"{parsed_db_url.hostname}{':' + str(parsed_db_url.port) if parsed_db_url.port else ''}"
+    f"{parsed_db_url.path}"
+)
+
+# 修正後
+from typing import AsyncGenerator
+
+from fastapi import Depends
+from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy import NullPool, make_url
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from .config import settings
+from .models import Base, User
+
+
+# Parse DATABASE_URL using SQLAlchemy's make_url to handle driver specifications correctly
+parsed_db_url = make_url(settings.DATABASE_URL)
+
+# Ensure the driver is asyncpg for async operations
+if parsed_db_url.drivername == "postgresql":
+    async_db_connection_url = parsed_db_url.set(drivername="postgresql+asyncpg").render_as_string(hide_password=False)
+elif parsed_db_url.drivername == "postgresql+asyncpg":
+    async_db_connection_url = parsed_db_url.render_as_string(hide_password=False)
+else:
+    async_db_connection_url = str(parsed_db_url)
+```
+
+## 動作確認
+
+### ユーザー登録
+
+```bash
+$ curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "TestPassword123!"}'
+{"id":"...","email":"test@example.com","is_active":true,"is_superuser":false,"is_verified":false}
+```
+
+### ログイン
+
+```bash
+$ curl -X POST http://localhost:8000/auth/jwt/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=test@example.com&password=TestPassword123!"
+{"access_token":"...","token_type":"bearer"}
+```
+
+### フロントエンドでのログイン
+
+1. ✅ ログインページでメールアドレスとパスワードを入力
+2. ✅ Sign Inボタンをクリック
+3. ✅ ダッシュボードページにリダイレクトされる
+4. ✅ LOGIN_BAD_CREDENTIALSエラーが発生しない
+
+## 影響範囲
+
+- **データベース接続**: `make_url`を使用することで、SQLAlchemyのドライバ指定を含むURLを正しくパース
+- **パスワード保持**: `render_as_string(hide_password=False)`でパスワードをマスクせずに保持
+- **アプリケーション起動**: データベース接続が正常に確立され、ログイン機能が正常に動作
+
+## 注意事項
+
+- この修正により、`urllib.parse.urlparse`の代わりに`sqlalchemy.make_url`を使用するため、SQLAlchemyのURL型を正しく処理できるようになります
+- `render_as_string(hide_password=False)`を使用しているため、ログ出力時にパスワードが表示される可能性があります（本番環境では注意が必要）
