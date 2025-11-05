@@ -42,7 +42,8 @@ def _derive_urls(database_url: str) -> tuple[str, str]:
 
     async_url = url.set(drivername=async_drivername)
 
-    return str(sync_url), str(async_url)
+    # Use render_as_string to preserve password in the URL string
+    return sync_url.render_as_string(hide_password=False), async_url.render_as_string(hide_password=False)
 
 
 def _get_required_database_urls() -> tuple[str, str]:
@@ -55,7 +56,7 @@ def _get_required_database_urls() -> tuple[str, str]:
 
 
 SYNC_DATABASE_URL, ASYNC_DATABASE_URL = _get_required_database_urls()
-config.set_main_option("sqlalchemy.url", SYNC_DATABASE_URL)
+# Don't set the URL in config here to avoid password masking issues
 ASYNC_DRIVERNAME = make_url(ASYNC_DATABASE_URL).drivername
 
 
@@ -87,36 +88,24 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-async def run_async_migrations() -> None:
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode using synchronous engine.
+    
+    This avoids asyncpg password authentication issues during migrations
+    while still allowing the application to use async database connections.
+    """
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = ASYNC_DATABASE_URL
-    connectable = async_engine_from_config(
+    configuration["sqlalchemy.url"] = SYNC_DATABASE_URL
+    connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+    with connectable.connect() as connection:
+        do_run_migrations(connection)
 
-    await connectable.dispose()
-
-
-def run_migrations_online() -> None:
-    if ASYNC_DRIVERNAME.startswith("sqlite+"):
-        connectable = engine_from_config(
-            config.get_section(config.config_ini_section, {}),
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
-            url=SYNC_DATABASE_URL,
-        )
-
-        with connectable.connect() as connection:
-            do_run_migrations(connection)
-
-        connectable.dispose()
-    else:
-        asyncio.run(run_async_migrations())
+    connectable.dispose()
 
 
 if context.is_offline_mode():
