@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import { Button } from "@/components/ui/button";
 import type { Spot } from "@/lib/spots";
 import {
@@ -36,10 +37,8 @@ const Popup = dynamic(
   { ssr: false }
 );
 
-const useMap = dynamic(
-  () => import("react-leaflet").then((mod) => mod.useMap),
-  { ssr: false }
-);
+// Import useMap directly from react-leaflet (will be used client-side only)
+import { useMap as useLeafletMap } from "react-leaflet";
 
 interface SpotMapProps {
   spots: Spot[];
@@ -58,7 +57,7 @@ function MapController({
   spots: Spot[];
   selectedSpotId?: string;
 }) {
-  const map = useMap();
+  const map = useLeafletMap();
 
   useEffect(() => {
     if (spots.length === 0) return;

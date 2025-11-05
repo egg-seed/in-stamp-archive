@@ -2,15 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  Download,
-  Landmark,
-  LayoutDashboard,
-  Map,
-  Settings2,
-  Stamp,
-  Upload,
-} from "lucide-react";
+import { Stamp } from "lucide-react";
 
 import { currentUser } from "@/src/lib/api/generated/sdk.gen";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -22,43 +14,43 @@ const NAVIGATION_ITEMS = [
   {
     href: "/dashboard",
     label: "ダッシュボード",
-    icon: LayoutDashboard,
+    icon: "LayoutDashboard",
     description: "記録の概要",
   },
   {
     href: "/dashboard/prefectures",
     label: "都道府県ナビ",
-    icon: Map,
+    icon: "Map",
     description: "地図とリストで巡る",
   },
   {
     href: "/dashboard/spots",
     label: "スポット管理",
-    icon: Landmark,
+    icon: "Landmark",
     description: "寺社・城郭の管理",
   },
   {
     href: "/dashboard/goshuin",
     label: "御朱印記録",
-    icon: Stamp,
+    icon: "Stamp",
     description: "参拝記録とアルバム",
   },
   {
     href: "/dashboard/export",
     label: "エクスポート",
-    icon: Download,
+    icon: "Download",
     description: "データのバックアップ",
   },
   {
     href: "/dashboard/import",
     label: "インポート",
-    icon: Upload,
+    icon: "Upload",
     description: "データの復元",
   },
   {
     href: "/dashboard/settings",
     label: "設定",
-    icon: Settings2,
+    icon: "Settings2",
     description: "プロフィールと表示設定",
   },
 ] as const;
