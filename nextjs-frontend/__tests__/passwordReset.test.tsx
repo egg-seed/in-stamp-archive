@@ -55,7 +55,7 @@ describe("passwordReset action", () => {
     const result = await passwordReset(undefined, formData);
 
     expect(result).toEqual({
-      server_error: "An unexpected error occurred. Please try again later.",
+      server_error: "予期しないエラーが発生しました。しばらくしてからお試しください。",
     });
   });
 });

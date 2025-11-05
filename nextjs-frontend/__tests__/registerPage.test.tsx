@@ -67,7 +67,7 @@ describe("Register Page", () => {
 
   it("displays server error for unexpected errors", async () => {
     (register as jest.Mock).mockResolvedValue({
-      server_error: "An unexpected error occurred. Please try again later.",
+      server_error: "予期しないエラーが発生しました。しばらくしてからお試しください。",
     });
 
     render(<Page />);
@@ -83,7 +83,7 @@ describe("Register Page", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "An unexpected error occurred. Please try again later.",
+          "予期しないエラーが発生しました。しばらくしてからお試しください。",
         ),
       ).toBeInTheDocument();
     });
