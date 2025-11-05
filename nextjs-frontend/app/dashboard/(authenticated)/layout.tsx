@@ -3,11 +3,13 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
+  Download,
   Landmark,
   LayoutDashboard,
   Map,
   Settings2,
   Stamp,
+  Upload,
 } from "lucide-react";
 
 import { currentUser } from "@/src/lib/api/generated/sdk.gen";
@@ -40,6 +42,18 @@ const NAVIGATION_ITEMS = [
     label: "御朱印記録",
     icon: Stamp,
     description: "参拝記録とアルバム",
+  },
+  {
+    href: "/dashboard/export",
+    label: "エクスポート",
+    icon: Download,
+    description: "データのバックアップ",
+  },
+  {
+    href: "/dashboard/import",
+    label: "インポート",
+    icon: Upload,
+    description: "データの復元",
   },
   {
     href: "/dashboard/settings",
