@@ -37,7 +37,7 @@ export type HiraganaGroup = keyof typeof HIRAGANA_GROUPS;
  */
 export function getPrefectureGroup(prefecture: string): HiraganaGroup | null {
   for (const [group, prefectures] of Object.entries(HIRAGANA_GROUPS)) {
-    if (prefectures.includes(prefecture)) {
+    if ((prefectures as readonly string[]).includes(prefecture)) {
       return group as HiraganaGroup;
     }
   }

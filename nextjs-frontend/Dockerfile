@@ -1,22 +1,23 @@
 FROM node:20-bookworm
 
-# Set the working directory
+# Set the working directory and set ownership
 WORKDIR /app
+RUN chown -R node:node /app
 
 # Install pnpm globally
 RUN npm install -g pnpm
 
-# Copy package files and install dependencies
-COPY package*.json ./
-
-# Install dependencies as root (or myappuser, depending on your structure)
-RUN pnpm install
-
-## Switch to the non-root user
+# Switch to the non-root user
 USER node
 
+# Copy package files and install dependencies
+COPY --chown=node:node package*.json ./
+
+# Install dependencies as node user
+RUN pnpm install
+
 # Copy the rest of your application code
-COPY . .
+COPY --chown=node:node . .
 
 EXPOSE 3000
 
