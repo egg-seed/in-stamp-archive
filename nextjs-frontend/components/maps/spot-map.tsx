@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
+import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import type { Spot } from "@/lib/spots";
 import {
